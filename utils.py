@@ -510,7 +510,7 @@ class AppRecommendation(object):
         vectorA = [val for _tag, val in tags1_normalized]
         vectorB = [val for _tag, val in tags2_normalized]
 
-        similarity = spatial.distance.cosine(vectorA, vectorB)
+        similarity = 1 - spatial.distance.cosine(vectorA, vectorB)
 
         return similarity
 
