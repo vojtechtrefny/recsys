@@ -83,6 +83,8 @@ class XmlBuilder(object):
     def _add_to_tree(self, pkg):
         """ Add package to XML """
 
+        print(pkg.name)
+
         app = ET.SubElement(self.xml_root, "application")
 
         name = ET.SubElement(app, "name")
@@ -121,8 +123,8 @@ class XmlBuilder(object):
         _names = []
 
         for pkg in packages:
-            if not pkg.name.startswith(("0", "a")):
-                continue # XXX -- for testing only to avoid waiting for data
+            #if not pkg.name.startswith(("0", "a")):
+            #    continue # XXX -- for testing only to avoid waiting for data
             if pkg.name in _names:
                 continue
             if self._is_app(pkg):
@@ -460,18 +462,32 @@ class AppRecommendation(object):
 
         return self._recommended
 
-    def _compare_tags(self, tags1, tags2):
-        """ Compare two sets of tags based on its similarity """
+    def _compare_tags(self, compare_type, tags1, tags2):
+        """ Compare two sets of tags/words based on its similarity """
 
-        # normalize tags values
-        tags1_normalized = []
-        for (tag, value) in tags1:
-            value = value / self.user_profile.all_tags[tag]
-            tags1_normalized.append((tag, value))
-        tags2_normalized = []
-        for (tag, value) in tags1:
-            value = value / self.user_profile.all_tags[tag]
-            tags2_normalized.append((tag, value))
+        if compare_type == "tags":
+            # normalize tags values
+            tags1_normalized = []
+            for (tag, value) in tags1:
+                if self.user_profile.all_tags[tag] > 0:
+                    value = value / self.user_profile.all_tags[tag]
+                tags1_normalized.append((tag, value))
+            tags2_normalized = []
+            for (tag, value) in tags2:
+                if self.user_profile.all_tags[tag] > 0:
+                    value = value / self.user_profile.all_tags[tag]
+                tags2_normalized.append((tag, value))
+        elif compare_type == "words":
+            tags1_normalized = []
+            for (tag, value) in tags1:
+                if self.user_profile.all_words[tag] > 0:
+                    value = value / self.user_profile.all_words[tag]
+                tags1_normalized.append((tag, value))
+            tags2_normalized = []
+            for (tag, value) in tags2:
+                if self.user_profile.all_words[tag] > 0:
+                    value = value / self.user_profile.all_words[tag]
+                tags2_normalized.append((tag, value))
 
         # both set of tags needs to have same tags (even with value 0) for cosine
         # similarity comparison
@@ -503,8 +519,10 @@ class AppRecommendation(object):
 
         recommended = []
 
+        # per category based recommendation
         for category, _fav in self.user_profile.favourite_categories.most_common(5):
             category_tags = self.user_profile.get_tags_for_category(category)
+            category_words = self.user_profile.get_words_for_category(category)
 
             most_rec = Counter()
 
@@ -512,15 +530,17 @@ class AppRecommendation(object):
                 if app.installed:
                     continue
                 if app.category == category:
-                    rec_factor = self._compare_tags(category_tags, app.tags)
-                    most_rec[app] = rec_factor
+                    rec_factor = self._compare_tags("tags", category_tags, app.tags) + self._compare_tags("words", category_words, app.words)
+                    if rec_factor >= 0:
+                        most_rec[app] = rec_factor
 
             for app, factor in most_rec.most_common(4):
                 recommended.append(app.name)
 
                 # with debug information
-                app.recommended_debug = RecDebug(app_name=app.name, app_tags=app.tags, app_category=app.category,
-                                                 category_tags=category_tags, similarity=factor)
+                app.recommended_debug = RecDebug(app_name=app.name, app_tags=app.tags, app_words=app.words,
+                                                 app_category=app.category, category_tags=category_tags,
+                                                 similarity=factor)
 
         return recommended
 
@@ -531,6 +551,7 @@ class RecDebug(object):
     def __init__(self, **kwargs):
         self.app_name = kwargs.get("app_name")
         self.app_tags = kwargs.get("app_tags")
+        self.app_words = kwargs.get("app_words")
         self.app_category = kwargs.get("app_category")
         self.category_tags = kwargs.get("category_tags")
         self.similarity = kwargs.get("similarity")
@@ -543,6 +564,9 @@ class RecDebug(object):
         s += "\t• Application tags:\n"
         for tag, num in self.app_tags:
             s += "\t\t\t• %s (%d)\n" % (tag, num)
+        s += "\t• Application words:\n"
+        for word, num in self.app_words:
+            s += "\t\t\t• %s (%d)\n" % (word, num)
         s += "\t• Similarity: %s\n" % self.similarity
 
         return s
