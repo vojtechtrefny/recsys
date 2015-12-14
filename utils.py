@@ -188,6 +188,8 @@ class XmlBuilder(object):
         for word in pkg.description.lower().split():
             if word.endswith((".", ",", "!", "?", ":", ";")):
                 word = word[:-1]
+            if word in ("*", "-"):
+                continue
             if word not in self.ignored_words:
                 if word not in word_frequency.keys():
                     word_frequency[word] = 1
@@ -323,9 +325,13 @@ class UserProfile(object):
             for tag in app.tags:
                 # all tags
                 if tag[0] not in self._all_tags.keys():
-                    self._all_tags[tag[0]] = tag[1]
+                    if tag[1] < 0:
+                        self._all_tags[tag[0]] = 0
+                    else:
+                        self._all_tags[tag[0]] = tag[1]
                 else:
-                    self._all_tags[tag[0]] += tag[1]
+                    if tag[1] > 0:
+                        self._all_tags[tag[0]] += tag[1]
 
                 if not app.installed:
                     continue
@@ -470,23 +476,31 @@ class AppRecommendation(object):
             tags1_normalized = []
             for (tag, value) in tags1:
                 if self.user_profile.all_tags[tag] > 0:
-                    value = value / self.user_profile.all_tags[tag]
+                    tf = value / sum([val for _tag, val in tags1])
+                    idf = sum(list(self.user_profile.all_tags.values())) / self.user_profile.all_tags[tag]
+                    value = tf*idf
                 tags1_normalized.append((tag, value))
             tags2_normalized = []
             for (tag, value) in tags2:
                 if self.user_profile.all_tags[tag] > 0:
-                    value = value / self.user_profile.all_tags[tag]
+                    tf = value / sum([val for _tag, val in tags2])
+                    idf = sum(list(self.user_profile.all_tags.values())) / self.user_profile.all_tags[tag]
+                    value = tf*idf
                 tags2_normalized.append((tag, value))
         elif compare_type == "words":
             tags1_normalized = []
             for (tag, value) in tags1:
                 if self.user_profile.all_words[tag] > 0:
-                    value = value / self.user_profile.all_words[tag]
+                    tf = value / sum([val for _tag, val in tags1])
+                    idf = sum(list(self.user_profile.all_words.values())) / self.user_profile.all_words[tag]
+                    value = tf*idf
                 tags1_normalized.append((tag, value))
             tags2_normalized = []
             for (tag, value) in tags2:
                 if self.user_profile.all_words[tag] > 0:
-                    value = value / self.user_profile.all_words[tag]
+                    tf = value / sum([val for _tag, val in tags2])
+                    idf = sum(list(self.user_profile.all_words.values())) / self.user_profile.all_words[tag]
+                    value = tf*idf
                 tags2_normalized.append((tag, value))
 
         # both set of tags needs to have same tags (even with value 0) for cosine
@@ -530,7 +544,8 @@ class AppRecommendation(object):
                 if app.installed:
                     continue
                 if app.category == category:
-                    rec_factor = self._compare_tags("tags", category_tags, app.tags) + self._compare_tags("words", category_words, app.words)
+                    rec_factor = self._compare_tags("tags", category_tags, app.tags) + \
+                                 self._compare_tags("words", category_words, app.words)
                     if rec_factor >= 0:
                         most_rec[app] = rec_factor
 
@@ -538,8 +553,9 @@ class AppRecommendation(object):
                 recommended.append(app.name)
 
                 # with debug information
-                app.recommended_debug = RecDebug(app_name=app.name, app_tags=app.tags, app_words=app.words,
-                                                 app_category=app.category, category_tags=category_tags,
+                app.recommended_debug = RecDebug(app_name=app.name, app_tags=app.tags,
+                                                 app_words=app.words, app_category=app.category,
+                                                 category_tags=category_tags,
                                                  similarity=factor)
 
         return recommended
