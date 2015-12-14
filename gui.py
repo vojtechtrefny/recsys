@@ -23,7 +23,6 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, Gdk
 
-import signal
 import os
 
 from utils import AppReader
@@ -153,9 +152,3 @@ class GUI(object):
 
     def _get_description(self, app):
         return app.desc
-
-if __name__ == '__main__':
-
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    GUI()
-    Gtk.main()
