@@ -30,6 +30,7 @@ from collections import Counter
 # ---------------------------------------------------------------------------- #
 
 XML_PATH = "data/applications.xml"
+IGNORED_TAGS = ["xfce", "xfce4", "gnome", "gtk", "kde", "qt"]
 
 # ---------------------------------------------------------------------------- #
 
@@ -475,6 +476,8 @@ class AppRecommendation(object):
             # normalize tags values
             tags1_normalized = []
             for (tag, value) in tags1:
+                if tag in IGNORED_TAGS:  # remove tags we ignore
+                    continue
                 if self.user_profile.all_tags[tag] > 0:
                     tf = value / sum([val for _tag, val in tags1])
                     idf = sum(list(self.user_profile.all_tags.values())) / self.user_profile.all_tags[tag]
@@ -482,6 +485,8 @@ class AppRecommendation(object):
                 tags1_normalized.append((tag, value))
             tags2_normalized = []
             for (tag, value) in tags2:
+                if tag in IGNORED_TAGS:  # remove tags we ignore
+                    continue
                 if self.user_profile.all_tags[tag] > 0:
                     tf = value / sum([val for _tag, val in tags2])
                     idf = sum(list(self.user_profile.all_tags.values())) / self.user_profile.all_tags[tag]
