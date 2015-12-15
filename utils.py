@@ -73,6 +73,10 @@ class XmlBuilder(object):
         if self._ignored_words is None:
             self._ignored_words = []
 
+            # no ignored words list present
+            if not os.path.isfile("data/ignored_words.txt"):
+                return self._ignored_words
+
             with open("data/ignored_words.txt", "r") as f:
                 for line in f:
                     if line.startswith("#"):
