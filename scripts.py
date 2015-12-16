@@ -41,6 +41,7 @@ def analyze_apps():
 
     tags = Counter()
     words = Counter()
+    categories = Counter()
 
     # read the xml with data
     tree = ET.parse(XML_PATH)
@@ -48,6 +49,13 @@ def analyze_apps():
 
     # read tags and words (terms) from the xml
     for app in root:
+        category = app[3].text
+
+        if category not in categories.keys():
+            categories[category] = 1
+        else:
+            categories[category] += 1
+
         for t in app[4]:
             tag_name = t.get("tag")
             tag_value = int(t.get("value"))
@@ -73,6 +81,7 @@ def analyze_apps():
     # just most common are interesting for barplots
     tags = tags.most_common(30)
     words = words.most_common(30)
+    categories = categories.most_common(100)  # we want all categories
 
     # plot the histograms
     tag_names = [tag for tag, _val in tags]
@@ -94,6 +103,16 @@ def analyze_apps():
     pyplot.xticks(xticks_pos, word_names, rotation=45, ha="right")
     pyplot.subplots_adjust(bottom=0.2)
     pyplot.savefig("data/words_graph.png")
+
+    cat_names = [cat for cat, _val in categories]
+    cat_values = [val for _cat, val in categories]
+
+    pyplot.figure(3)
+    plot2 = pyplot.bar(range(len(cat_names)), cat_values)
+    xticks_pos = [0.65*patch.get_width() + patch.get_xy()[0] for patch in plot2]
+    pyplot.xticks(xticks_pos, cat_names, rotation=45, ha="right")
+    pyplot.subplots_adjust(bottom=0.4)
+    pyplot.savefig("data/categories_graph.png")
 
 
 if __name__ == "__main__":
